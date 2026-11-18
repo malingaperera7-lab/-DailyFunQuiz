@@ -1,0 +1,51 @@
+
+name: Build Daily Fun Quiz APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '*.zip'
+      - '.github/workflows/android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract Android project
+        run: |
+          mkdir project
+          ZIP_FILE=$(find . -maxdepth 1 -name '*.zip' | head -n 1)
+          unzip -q "$ZIP_FILE" -d project
+
+      - name: Find Android project
+        id: locate
+        run: |
+          FILE=$(find project -name settings.gradle | head -n 1)
+          DIR=$(dirname "$FILE")
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Build APK
+        run: |
+          gradle -p "${{ steps.locate.outputs.dir }}" assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Daily-Fun-Quiz-APK
+          path: ${{ steps.locate.outputs.dir }}/app/build/outputs/apk/debug/*.apk
